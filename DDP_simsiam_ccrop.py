@@ -266,6 +266,8 @@ def main():
 
         # start ContrastiveCrop
         train_set.use_box = epoch >= cfg.warmup_epochs + 1
+        
+        print("==> Start training...", epoch)
 
         # train; all processes
         train(train_loader, model, criterion, optimizer, epoch, cfg, logger, writer)
