@@ -272,7 +272,7 @@ def main():
         # train; all processes
         train(train_loader, model, criterion, optimizer, epoch, cfg, logger, writer)
         
-         print("==> Start training...", epoch)
+        print("==> Start training...", epoch)
 
         # update boxes; all processes
         if epoch >= cfg.warmup_epochs and epoch != cfg.epochs and epoch % cfg.loc_interval == 0:
