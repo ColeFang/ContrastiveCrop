@@ -22,7 +22,7 @@ from utils.config import Config, ConfigDict, DictAction
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('config', type=str, help='config file path')
+    parser.add_argument('config', type=str,help='config file path')
     parser.add_argument('--work-dir', help='the dir to save logs and models')
     parser.add_argument('--cfgname', help='specify log_file; for debug use')
     parser.add_argument('--resume', type=str, help='path to resume checkpoint (default: None)')
@@ -197,12 +197,7 @@ def main():
     log_file = os.path.join(cfg.work_dir, f'{timestamp}.cfg')
     with open(log_file, 'a') as f:
         f.write(cfg.pretty_text)
-
-    # spawn
-    mp.spawn(main_worker, nprocs=world_size, args=(world_size, cfg))
-
-
-def main_worker(rank, world_size, cfg):
+    rank = 0
     print('==> Start rank:', rank)
 
     local_rank = rank % 8
