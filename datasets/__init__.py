@@ -5,4 +5,4 @@ from .imagenet_subset import ImageFolderSubset, ImageFolderSubsetCCrop
 from .imagenet import ImageFolderCCrop
 from torchvision.datasets import ImageFolder
 
-from .build import build_dataset, build_dataset_ccrop
+from .build import build_dataset, build_dataset_ccrop, build_dataset_mcrop

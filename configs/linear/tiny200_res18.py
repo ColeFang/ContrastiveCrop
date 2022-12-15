@@ -33,16 +33,9 @@ data = dict(
 )
 
 # training optimizer & scheduler
-epochs = 100
-lr = 10.0
+epochs = 200
+lr = 30.0
 optimizer = dict(type='SGD', lr=lr, momentum=0.9, weight_decay=0)
-lr_cfg = dict(  # passed to adjust_learning_rate()
-    type='MultiStep',
-    steps=epochs,
-    lr=lr,
-    decay_rate=0.1,
-    decay_steps=[60, 80],
-)
 
 
 # log, load & save

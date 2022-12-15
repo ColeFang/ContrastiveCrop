@@ -1,6 +1,6 @@
 from torchvision import transforms
 from .ContrastiveCrop import ContrastiveCrop
-from .misc import MultiViewTransform, CCompose
+from .misc import MultiViewTransform, CCompose, MixupTransform
 
 
 def cifar_train_rcrop(mean=None, std=None):
@@ -19,6 +19,21 @@ def cifar_train_rcrop(mean=None, std=None):
     transform = MultiViewTransform(transform, num_views=2)
     return transform
 
+def cifar_train_mcrop(mean=None, std=None):
+    trans_list = [
+        transforms.RandomResizedCrop(size=32, scale=(0.2, 1.0)),
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.RandomApply([
+            transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)
+        ], p=0.8),
+        transforms.RandomGrayscale(p=0.2),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=mean, std=std),
+    ]
+
+    transform = transforms.Compose(trans_list)
+    transform = MixupTransform(transform, num_views=2)
+    return transform
 
 def cifar_train_ccrop(alpha=0.6, mean=None, std=None):
     trans_list = [
@@ -53,6 +68,21 @@ def stl10_train_rcrop(mean=None, std=None):
     transform = MultiViewTransform(transform, num_views=2)
     return transform
 
+def stl10_train_mcrop(mean=None, std=None):
+    trans_list = [
+        transforms.RandomResizedCrop(size=96, scale=(0.2, 1.0)),
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.RandomApply([
+            transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)
+        ], p=0.8),
+        transforms.RandomGrayscale(p=0.2),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=mean, std=std),
+    ]
+
+    transform = transforms.Compose(trans_list)
+    transform = MixupTransform(transform, num_views=2)
+    return transform
 
 def stl10_train_ccrop(alpha=0.6, mean=None, std=None):
     trans_list = [
@@ -87,7 +117,21 @@ def tiny200_train_rcrop(mean=None, std=None):
     transform = MultiViewTransform(transform, num_views=2)
     return transform
 
+def tiny200_train_mcrop(mean=None, std=None):
+    trans_list = [
+        transforms.RandomResizedCrop(size=64, scale=(0.2, 1.0)),
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.RandomApply([
+            transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)
+        ], p=0.8),
+        transforms.RandomGrayscale(p=0.2),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=mean, std=std),
+    ]
 
+    transform = transforms.Compose(trans_list)
+    transform = MixupTransform(transform, num_views=2)
+    return transform
 def tiny200_train_ccrop(alpha=0.6, mean=None, std=None):
     trans_list = [
         ContrastiveCrop(alpha=alpha, size=64, scale=(0.2, 1.0)),

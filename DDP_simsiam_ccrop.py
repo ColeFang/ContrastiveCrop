@@ -11,10 +11,10 @@ import torch.multiprocessing as mp
 from torch.utils.tensorboard import SummaryWriter
 import torch.nn.functional as F
 
-from builder import build_optimizer, build_logger
+from builder import build_optimizer, build_logger, LR_Scheduler
 from models import SimSiam, build_model
 from losses import build_loss
-from datasets import build_dataset, build_dataset_ccrop
+from datasets import build_dataset, build_dataset_ccrop, build_dataset_mcrop
 
 from utils.util import AverageMeter, format_time, set_seed, adjust_lr_simsiam
 from utils.config import Config, ConfigDict, DictAction
@@ -132,7 +132,7 @@ def update_box(eval_train_loader, model, len_ds, logger, t=0.05):
     return all_boxes
 
 
-def train(train_loader, model, criterion, optimizer, epoch, cfg, logger, writer):
+def train(train_loader, model, criterion, optimizer, epoch, cfg, logger, writer, lr_scheduler):
     """one epoch training"""
     model.train()
 
@@ -159,6 +159,7 @@ def train(train_loader, model, criterion, optimizer, epoch, cfg, logger, writer)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+        lr_scheduler.step()
 
         # measure elapsed time
         batch_time.update(time.time() - end)
@@ -204,7 +205,7 @@ def main():
     cfg.local_rank = local_rank
     torch.cuda.set_device(local_rank)
 
-    dist.init_process_group(backend='nccl', init_method=f'tcp://localhost:{cfg.port}',
+    dist.init_process_group(backend='gloo', init_method=f'tcp://localhost:{cfg.port}',
                             world_size=world_size, rank=rank)
 
     # build logger, writer
@@ -217,7 +218,7 @@ def main():
     bsz_gpu = int(cfg.batch_size / cfg.world_size)
     print('batch_size per gpu:', bsz_gpu)
 
-    train_set = build_dataset_ccrop(cfg.data.train)
+    train_set = build_dataset_mcrop(cfg.data.train)
     len_ds = len(train_set)
     train_sampler = torch.utils.data.distributed.DistributedSampler(train_set, shuffle=True)
     train_loader = torch.utils.data.DataLoader(
@@ -253,6 +254,14 @@ def main():
         optim_params = model.parameters()
     optimizer = build_optimizer(cfg.optimizer, optim_params)
 
+    lr_scheduler = LR_Scheduler(
+        optimizer,
+        10, 0,
+        800, 0.03 * 2,0,
+        len(train_loader),
+        constant_predictor_lr=True  # see the end of section 4.2 predictor
+    )
+
     start_epoch = 1
     if cfg.resume:
         start_epoch = load_weights(cfg.resume, train_set, model, optimizer, resume=True)
@@ -262,17 +271,12 @@ def main():
     print("==> Start training...")
     for epoch in range(start_epoch, cfg.epochs + 1):
         train_sampler.set_epoch(epoch)
-        adjust_lr_simsiam(cfg.lr_cfg, optimizer, epoch)
 
         # start ContrastiveCrop
         train_set.use_box = epoch >= cfg.warmup_epochs + 1
-        
-        print("==> Start training...", epoch)
 
         # train; all processes
-        train(train_loader, model, criterion, optimizer, epoch, cfg, logger, writer)
-        
-        print("==> Start training...", epoch)
+        train(train_loader, model, criterion, optimizer, epoch, cfg, logger, writer, lr_scheduler)
 
         # update boxes; all processes
         if epoch >= cfg.warmup_epochs and epoch != cfg.epochs and epoch % cfg.loc_interval == 0:

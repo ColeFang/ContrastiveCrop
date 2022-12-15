@@ -6,7 +6,7 @@ loss = dict(type='CrossEntropyLoss')
 root = './data'
 mean = (0.5071, 0.4867, 0.4408)
 std = (0.2675, 0.2565, 0.2761)
-batch_size = 512
+batch_size = 256
 num_workers = 4
 data = dict(
     train=dict(
@@ -34,8 +34,8 @@ data = dict(
 )
 
 # training optimizer & scheduler
-epochs = 100
-lr = 10.0
+epochs = 200
+lr = 30.0
 optimizer = dict(type='SGD', lr=lr, momentum=0.9, weight_decay=0)
 lr_cfg = dict(  # passed to adjust_learning_rate()
     type='MultiStep',

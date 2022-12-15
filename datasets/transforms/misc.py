@@ -22,6 +22,18 @@ class MultiViewTransform:
         views = [t(x) for t in self.transforms]
         return views
 
+class MixupTransform:
+    """Create multiple views of the same image"""
+    def __init__(self, transform, num_views=2):
+        if not isinstance(transform, (list, tuple)):
+            transform = [transform for _ in range(num_views)]
+        self.transforms = transform
+
+    def __call__(self, x):
+        views = [t(x) for t in self.transforms]
+        views[1] = 0.2 * views[0] + 0.8 * views[1]
+        return views
+
 
 class GaussianBlur(object):
     """Gaussian blur augmentation in SimCLR https://arxiv.org/abs/2002.05709"""

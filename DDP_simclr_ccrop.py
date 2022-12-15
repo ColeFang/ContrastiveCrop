@@ -211,7 +211,7 @@ def main_worker(rank, world_size, cfg):
     cfg.local_rank = local_rank
     torch.cuda.set_device(local_rank)
 
-    dist.init_process_group(backend='nccl', init_method=f'tcp://localhost:{cfg.port}',
+    dist.init_process_group(backend='gloo', init_method=f'tcp://localhost:{cfg.port}',
                             world_size=world_size, rank=rank)
 
     # build logger, writer

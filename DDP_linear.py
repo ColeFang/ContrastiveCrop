@@ -11,7 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 from datasets import build_dataset
 from models import build_model
 from losses import build_loss
-from builder import build_optimizer, build_logger
+from builder import build_optimizer, build_logger, LR_Scheduler
 
 from utils.util import AverageMeter, TrackMeter, format_time, adjust_learning_rate, accuracy, set_seed
 from utils.config import Config, ConfigDict, DictAction
@@ -118,7 +118,7 @@ def load_weights(ckpt_path, model, optimizer, resume=False):
     return start_epoch
 
 
-def train(train_loader, model, criterion, optimizer, epoch, cfg, logger, writer):
+def train(train_loader, model, criterion, optimizer, epoch, cfg, logger, writer, lr_scheduler):
     """one epoch training"""
     model.eval()
 
@@ -148,10 +148,11 @@ def train(train_loader, model, criterion, optimizer, epoch, cfg, logger, writer)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+        lr_scheduler.step()
 
         # measure elapsed time
         batch_time.update(time.time() - end)
-        end = time.time()
+        end = time .time()
 
         # print info
         if (idx + 1) % cfg.log_interval == 0 and logger is not None:
@@ -176,7 +177,7 @@ def train(train_loader, model, criterion, optimizer, epoch, cfg, logger, writer)
     return losses.avg, top1.avg
 
 
-def test(test_loader, model, criterion, epoch, logger, writer):
+def tmodel(test_loader, model, criterion, epoch, logger, writer):
     model.eval()
 
     losses = AverageMeter()
@@ -230,7 +231,7 @@ def main_worker(rank, world_size, cfg):
     torch.cuda.set_device(local_rank)
     # cfg.rank = rank
 
-    dist.init_process_group(backend='nccl', init_method=f'tcp://localhost:{cfg.port}',
+    dist.init_process_group(backend='gloo', init_method=f'tcp://localhost:{cfg.port}',
                             world_size=world_size, rank=rank)
 
     # logger
@@ -269,6 +270,13 @@ def main_worker(rank, world_size, cfg):
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[cfg.local_rank])
     criterion = build_loss(cfg.loss).cuda()
     optimizer = build_optimizer(cfg.optimizer, parameters)
+    lr_scheduler = LR_Scheduler(
+        optimizer,
+        0, 0,
+        200, 10, 0,
+        len(train_loader),
+        constant_predictor_lr=True  # see the end of section 4.2 predictor
+    )
     start_epoch = 1
     if cfg.resume:
         start_epoch = load_weights(cfg.resume, model, optimizer, resume=True)
@@ -281,13 +289,13 @@ def main_worker(rank, world_size, cfg):
     print("==> Start training...")
     for epoch in range(start_epoch, cfg.epochs + start_epoch):
         train_sampler.set_epoch(epoch)
-        adjust_learning_rate(cfg.lr_cfg, optimizer, epoch)
+        #adjust_learning_rate(cfg.lr_cfg, optimizer, epoch)
 
         # train
-        train(train_loader, model, criterion, optimizer, epoch, cfg, logger, writer)
+        train(train_loader, model, criterion, optimizer, epoch, cfg, logger, writer, lr_scheduler)
 
         # test & save best
-        test_loss, test_acc = test(test_loader, model, criterion, epoch, logger, writer)
+        test_loss, test_acc = tmodel(test_loader, model, criterion, epoch, logger, writer)
         if test_acc > test_meter.max_val and rank == 0:
             model_path = os.path.join(cfg.work_dir, f'best_{cfg.cfgname}.pth')
             state_dict = {
@@ -300,7 +308,6 @@ def main_worker(rank, world_size, cfg):
         test_meter.update(test_acc, idx=epoch)
         if rank == 0:
             logger.info(f'Best acc: {test_meter.max_val:.2f} (epoch={test_meter.max_idx}).')
-
 
 if __name__ == '__main__':
     main()
