@@ -11,7 +11,7 @@ import torch.multiprocessing as mp
 from torch.utils.tensorboard import SummaryWriter
 import torch.nn.functional as F
 
-from builder import build_optimizer, build_logger
+from builder import build_optimizer, build_logger, LR_Scheduler
 from models import MoCo, build_model
 from losses import build_loss
 from datasets import build_dataset, build_dataset_ccrop
@@ -132,7 +132,7 @@ def update_box(eval_train_loader, model, len_ds, logger, t=0.05):
     return all_boxes
 
 
-def train(train_loader, model, criterion, optimizer, epoch, cfg, logger, writer):
+def train(train_loader, model, criterion, optimizer, epoch, cfg, logger, writer, lr_scheduler):
     """one epoch training"""
     model.train()
 
@@ -159,6 +159,7 @@ def train(train_loader, model, criterion, optimizer, epoch, cfg, logger, writer)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+        lr_scheduler.step()
 
         # measure elapsed time
         batch_time.update(time.time() - end)
@@ -209,7 +210,7 @@ def main_worker(rank, world_size, cfg):
     cfg.local_rank = local_rank
     torch.cuda.set_device(local_rank)
 
-    dist.init_process_group(backend='nccl', init_method=f'tcp://localhost:{cfg.port}',
+    dist.init_process_group(backend='gloo', init_method=f'tcp://localhost:{cfg.port}',
                             world_size=world_size, rank=rank)
 
     # build logger, writer
@@ -224,7 +225,7 @@ def main_worker(rank, world_size, cfg):
 
     train_set = build_dataset_ccrop(cfg.data.train)
     len_ds = len(train_set)
-    train_sampler = torch.utils.data.distributed.DistributedSampler(train_set, shuffle=True)
+    train_sampler = torch.utils.data.distributed.DistributedSampler(train_set, shuffle=False)
     train_loader = torch.utils.data.DataLoader(
         train_set,
         batch_size=bsz_gpu,
@@ -256,18 +257,26 @@ def main_worker(rank, world_size, cfg):
     if cfg.resume:
         start_epoch = load_weights(cfg.resume, train_set, model, optimizer, resume=True)
     cudnn.benchmark = True
+    lr_scheduler = LR_Scheduler(
+        optimizer,
+        10, 0,
+        800, 0.06, 0,
+        len(train_loader),
+        constant_predictor_lr=True  # see the end of section 4.2 predictor
+    )
 
     # Start training
     print("==> Start training...")
+    train_set.mix_up = True
     for epoch in range(start_epoch, cfg.epochs + 1):
         train_sampler.set_epoch(epoch)
-        adjust_learning_rate(cfg.lr_cfg, optimizer, epoch)
+        #adjust_learning_rate(cfg.lr_cfg, optimizer, epoch)
 
         # start ContrastiveCrop
         train_set.use_box = epoch >= cfg.warmup_epochs + 1
 
         # train; all processes
-        train(train_loader, model, criterion, optimizer, epoch, cfg, logger, writer)
+        train(train_loader, model, criterion, optimizer, epoch, cfg, logger, writer, lr_scheduler)
 
         # update boxes; all processes
         if epoch >= cfg.warmup_epochs and epoch != cfg.epochs and epoch % cfg.loc_interval == 0:

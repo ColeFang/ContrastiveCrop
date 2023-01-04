@@ -1,21 +1,21 @@
-# python DDP_simsiam_ccrop.py path/to/this/config
+# python DDP_moco_ccrop.py path/to/this/config
 
 # model
-dim, pred_dim = 512, 128
-model = dict(type='ResNet', depth=18, num_classes=dim, maxpool=False, zero_init_residual=True)
-simsiam = dict(dim=dim, pred_dim=pred_dim)
-loss = dict(type='CosineSimilarity', dim=1)
+dim = 128
+model = dict(type='ResNet', depth=18, num_classes=dim, maxpool=False)
+moco = dict(dim=dim, K=65536, m=0.999, T=0.20, mlp=True)
+loss = dict(type='CrossEntropyLoss')
 
 # data
 root = './data'
-mean = (0.4914, 0.4822, 0.4465)
-std = (0.2023, 0.1994, 0.2010)
+mean = (0.5071, 0.4867, 0.4408)
+std = (0.2675, 0.2565, 0.2761)
 batch_size = 512
 num_workers = 4
 data = dict(
     train=dict(
         ds_dict=dict(
-            type='CIFAR10_boxes',
+            type='CIFAR100_boxes',
             root=root,
             train=True,
         ),
@@ -31,7 +31,7 @@ data = dict(
     ),
     eval_train=dict(
         ds_dict=dict(
-            type='CIFAR10',
+            type='CIFAR100',
             root=root,
             train=True,
         ),
@@ -50,19 +50,7 @@ box_thresh = 0.10
 # training optimizer & scheduler
 epochs = 800
 lr = 0.06
-fix_pred_lr = True
 optimizer = dict(type='SGD', lr=lr, momentum=0.9, weight_decay=5e-4)
-cl = False
-lr_cfg = dict(  # passed to adjust_learning_rate(cfg=lr_cfg)
-    type='Cosine',
-    steps=epochs,
-    lr=lr,
-    decay_rate=0.1,
-    # decay_steps=[100, 150]
-    warmup_steps=0,
-    # warmup_from=0.01
-)
-
 
 # log & save
 log_interval = 20
@@ -70,4 +58,4 @@ save_interval = 200
 work_dir = None  # rewritten by args
 resume = None
 load = None
-port = 10001
+port = 10002

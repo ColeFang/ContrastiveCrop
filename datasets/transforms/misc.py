@@ -1,6 +1,7 @@
 from torchvision.transforms import Compose
 from PIL import ImageFilter
 import random
+import numpy as np
 
 
 class CCompose(Compose):
@@ -29,9 +30,16 @@ class MixupTransform:
             transform = [transform for _ in range(num_views)]
         self.transforms = transform
 
-    def __call__(self, x):
+    def __call__(self, alpha, x):
+        #mixup_lambda = np.random.beta(alpha, alpha)
+        mixup_lambda = alpha
+        #print("using beta distribution: ", mixup_lambda)
+        if mixup_lambda < 0:
+            mixup_lambda = 0
+        elif mixup_lambda > 1:
+            mixup_lambda = 1
         views = [t(x) for t in self.transforms]
-        views[1] = 0.2 * views[0] + 0.8 * views[1]
+        views[0] = mixup_lambda * views[1] + (1 - mixup_lambda) * views[0]
         return views
 
 

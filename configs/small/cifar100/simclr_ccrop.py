@@ -42,14 +42,15 @@ data = dict(
 )
 
 # boxes
+# boxes
 warmup_epochs = 100
 loc_interval = 100
 box_thresh = 0.10
 
 # training optimizer & scheduler
-epochs = 500
-lr = 0.5
-optimizer = dict(type='SGD', lr=lr, momentum=0.9, weight_decay=1e-4)
+epochs = 800
+lr = 0.06
+optimizer = dict(type='SGD', lr=lr, momentum=0.9, weight_decay=5e-4)
 lr_cfg = dict(  # passed to adjust_learning_rate(cfg=lr_cfg)
     type='Cosine',
     steps=epochs,

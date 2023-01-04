@@ -52,6 +52,7 @@ epochs = 800
 lr = 0.06
 fix_pred_lr = True
 optimizer = dict(type='SGD', lr=lr, momentum=0.9, weight_decay=5e-4)
+cl = False
 lr_cfg = dict(  # passed to adjust_learning_rate(cfg=lr_cfg)
     type='Cosine',
     steps=epochs,

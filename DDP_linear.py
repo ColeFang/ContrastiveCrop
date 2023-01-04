@@ -273,7 +273,7 @@ def main_worker(rank, world_size, cfg):
     lr_scheduler = LR_Scheduler(
         optimizer,
         0, 0,
-        200, 10, 0,
+        200, 30, 0,
         len(train_loader),
         constant_predictor_lr=True  # see the end of section 4.2 predictor
     )

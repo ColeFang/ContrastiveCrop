@@ -52,7 +52,7 @@ epochs = 800
 lr = 0.06
 fix_pred_lr = True
 optimizer = dict(type='SGD', lr=lr, momentum=0.9, weight_decay=5e-4)
-
+cl = False
 
 # log & save
 log_interval = 20

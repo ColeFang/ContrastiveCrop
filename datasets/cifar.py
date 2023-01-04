@@ -10,12 +10,16 @@ class CIFAR10_boxes(datasets.CIFAR10):
         self.transform_ccrop = transform_ccrop
         self.boxes = torch.tensor(init_box).repeat(self.__len__(), 1)
         self.use_box = True
+        self.mix_up = False
+        self.alpha = 0.05
 
     def __getitem__(self, index):
         img, target = self.data[index], self.targets[index]  # img:(H, W, C)=(32, 32, 3)
         img = Image.fromarray(img)
 
-        if self.use_box:
+        if self.mix_up:
+            img = self.transform_rcrop(self.alpha, img)
+        elif self.use_box:
             box = self.boxes[index].float().tolist()
             img = self.transform_ccrop([img, box])
         else:
@@ -31,12 +35,16 @@ class CIFAR100_boxes(datasets.CIFAR100):
         self.transform_ccrop = transform_ccrop
         self.boxes = torch.tensor(init_box).repeat(self.__len__(), 1)
         self.use_box = True
+        self.mix_up = False
+        self.alpha = 0.2
 
     def __getitem__(self, index):
         img, target = self.data[index], self.targets[index]  # img:(H, W, C)=(32, 32, 3)
         img = Image.fromarray(img)
 
-        if self.use_box:
+        if self.mix_up:
+            img = self.transform_rcrop(self.alpha, img)
+        elif self.use_box:
             box = self.boxes[index].float().tolist()
             img = self.transform_ccrop([img, box])
         else:
